@@ -2,11 +2,20 @@ import os
 import requests
 
 # required to work with Facebook Graph API
+# get it from https://developers.facebook.com/docs/apps/register
+# or ask @hroncok to run the script
 APP_ID = os.environ['APP_ID']
 APP_SECRET = os.environ['APP_SECRET']
 
-# ID of Facebook group is required!
-GROUPS = ['251560641854558', '457660044251817']
+# IDs of Facebook groups
+GROUPS = [
+    '201628346516017',  # facebook.com/groups/pyonieri
+    '1640052339543471',  # facebook.com/groups/pyladiespraha
+    '1607882249477421',  # facebook.com/groups/pyladiesBrno
+    '800923800012580',  # Učíme Python
+]
+
+API = 'https://graph.facebook.com/v2.11'
 
 
 def create_request(url, session):
@@ -16,17 +25,9 @@ def create_request(url, session):
     :param session: Facebook session
     """
     r = session.get(url)
-    if r.status_code == 404:
-        print('Facebook: ERROR 404 - Not Found')
-        exit(5)
-
-    if r.status_code == 401:
-        print('Facebook: ERROR 401 - Bad credentials')
-        exit(4)
-
-    if r.status_code != 200:
-        exit(10)
-
+    if r.status_code >= 400:
+        print(r.json()['error']['message'])
+        r.raise_for_status()
     return r.json()
 
 
@@ -46,12 +47,13 @@ if __name__ == '__main__':
     session = requests.Session()
 
     for group in GROUPS:
-        group_url = "https://graph.facebook.com/v2.11/{}/?access_token={}".format(group, token)
-        members_url = "https://graph.facebook.com/v2.11/{}/?fields=members.limit(0).summary(true)" \
-                      "&access_token={}".format(group, token)
+        group_url = f"{API}/{group}/?fields=name&access_token={token}"
+        members_url = (f"{API}/{group}/?fields=members.limit(0).summary(true)"
+                       f"&access_token={token}")
         name = create_request(group_url, session)['name']
         members = create_request(members_url, session)['members']
-        print("{}: {} members.".format(name, members['summary']['total_count']))
+        tc = members['summary']['total_count']
+        print("{name}: {tc} members.")
         total += members['summary']['total_count']
 
     print("Total: {} members.".format(total))
